@@ -42,6 +42,7 @@ typedef enum { LowImportance, MediumImportance, HighImportance, MediumHighImport
 typedef enum { CriticalWorkQueue, DelayedWorkQueue, HyperCriticalWorkQueue, MaximumWorkQueue } WORK_QUEUE_TYPE;
 typedef enum { Executive, Suspended = 5, UserRequest, } KWAIT_REASON;
 typedef enum { NonPagedPool, PagedPool } POOL_TYPE;
+typedef ULONG64 POOL_FLAGS;
 typedef enum { LowPoolPriority, NormalPoolPriority = 16 } EX_POOL_PRIORITY;
 typedef enum { KernelMode, UserMode } MODE;
 typedef enum { MmNonCached = FALSE, MmCached = TRUE } MEMORY_CACHING_TYPE;
@@ -127,6 +128,7 @@ DDKAPI NTSTATUS KeWaitForMultipleObjects(ULONG Count, PVOID Object[], WAIT_TYPE 
 
 DDKAPI PVOID ExAllocatePoolWithTag(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag);
 DDKAPI PVOID ExAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes);
+DDKAPI PVOID ExAllocatePool2(POOL_FLAGS Flags, SIZE_T NumberOfBytes, ULONG Tag);
 DDKAPI PVOID ExAllocatePoolWithTagPriority(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag, EX_POOL_PRIORITY Priority);
 DDKAPI VOID ExFreePoolWithTag(PVOID P, ULONG Tag);
 DDKAPI VOID ExFreePool(PVOID P);

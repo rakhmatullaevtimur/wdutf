@@ -33,6 +33,13 @@ PVOID ExAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
 
 
 DDKAPI
+PVOID ExAllocatePool2(POOL_FLAGS Flags, SIZE_T NumberOfBytes, ULONG Tag)
+{
+	return ExAllocatePoolWithTag(NonPagedPool, NumberOfBytes, Tag);
+}
+
+
+DDKAPI
 PVOID ExAllocatePoolWithTagPriority(POOL_TYPE PoolType, SIZE_T NumberOfBytes,
     ULONG Tag, EX_POOL_PRIORITY Priority)
 {
