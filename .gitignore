@@ -9,6 +9,3 @@
 .vscode/
 .vs/
 build/
-.clang-format
-Directory.Build.targets
-Directory.Build.props
