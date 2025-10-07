@@ -37,6 +37,32 @@ ULONG vDbgPrintEx(ULONG ComponentId, ULONG Level, PCCH Format, va_list arglist)
 }
 
 
+DDKAPI
+ULONG vDbgPrintExWithPrefix(PCCH Prefix, ULONG ComponentId, ULONG Level, PCCH Format, va_list arglist)
+{
+	UNREFERENCED_PARAMETER(ComponentId);
+    UNREFERENCED_PARAMETER(Level);
+
+    if (IsDebuggerPresent() && Prefix && *Prefix) {
+        OutputDebugStringA(Prefix); 
+    }
+
+    return vDbgPrintEx(ComponentId, Level, Format, arglist);
+}
+
+
+extern "C"
+DDKUSEDECL
+ULONG __cdecl DbgPrintExWithPrefix(PCCH Prefix, ULONG ComponentId, ULONG Level, PCCH Format, ...)
+{
+    va_list args;
+    va_start(args, Format);
+    vDbgPrintExWithPrefix(Prefix, ComponentId, Level, Format, args);
+    va_end(args);
+    return 0;
+}
+
+
 extern "C"
 DDKUSEDECL
 ULONG __cdecl DbgPrint(PCSTR Format, ...)
