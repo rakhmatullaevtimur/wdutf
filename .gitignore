@@ -2,6 +2,7 @@
 *.obj
 *.tmp
 *.exe
+!tools/bin/sed.exe
 *.pdb
 *.lib
 *.dll
