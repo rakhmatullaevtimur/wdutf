@@ -153,6 +153,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="AvlTest.cpp" />
     <ClCompile Include="BitMapTest.cpp" />
     <ClCompile Include="CpuTest.cpp" />
     <ClCompile Include="DetoursTest.cpp" />
