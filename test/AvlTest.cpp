@@ -859,6 +859,15 @@ namespace DdkUnitTest
                     return false;
                 };
 
+            PRTL_BALANCED_LINKS root =
+                reinterpret_cast<PRTL_BALANCED_LINKS>(
+                    RtlRightChild(
+                        reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                );
+
+            Assert::IsTrue(root != nullptr);
+            Assert::IsTrue(nodeInArray(root));
+
             // Check predecessor and successor for inner elements.
             for (ULONG k = 1; k + 1 < elementCount; ++k)
             {
