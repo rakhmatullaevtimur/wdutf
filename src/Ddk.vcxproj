@@ -353,7 +353,7 @@ copy "$(OutDir)ddk.pdb" "$(OutDir)vsTest" &gt;nul:</Command>
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)Ddk.pch</PrecompiledHeaderOutputFile>
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">$(IntDir)Ddk.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
-    <ClCompile Include="avl.cpp">
+    <ClCompile Include="avltable.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">Use</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdddk.h</PrecompiledHeaderFile>
@@ -683,6 +683,8 @@ copy "$(OutDir)ddk.pdb" "$(OutDir)vsTest" &gt;nul:</Command>
     <ClInclude Include="..\inc\ddk\wdmhdr.h" />
     <ClInclude Include="..\inc\ddk\winnt.h" />
     <ClInclude Include="..\inc\ddk\winnt_defs.h" />
+    <ClInclude Include="avl\avlsupp.ipp" />
+    <ClInclude Include="avl\rtlavl.ipp" />
     <ClInclude Include="data.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="object.h" />

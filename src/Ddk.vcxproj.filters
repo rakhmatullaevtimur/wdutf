@@ -9,6 +9,9 @@
       <UniqueIdentifier>{A4567765-E816-4D44-8234-F13A30C25A71}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl</Extensions>
     </Filter>
+    <Filter Include="Source Files\avl">
+      <UniqueIdentifier>{ae9c8e8d-daf1-492a-9df8-5dbbb5cb5fc4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="event.cpp">
@@ -161,7 +164,7 @@
     <ClCompile Include="defs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="avl.cpp">
+    <ClCompile Include="avltable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -225,6 +228,12 @@
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="avl\avlsupp.ipp">
+      <Filter>Source Files\avl</Filter>
+    </ClInclude>
+    <ClInclude Include="avl\rtlavl.ipp">
+      <Filter>Source Files\avl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

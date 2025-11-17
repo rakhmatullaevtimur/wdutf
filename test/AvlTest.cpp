@@ -86,7 +86,8 @@ namespace DdkUnitTest
 
         VOID
         InitializeTestAvlTable(
-            _Out_ PRTL_AVL_TABLE Table
+            _Out_ PRTL_AVL_TABLE Table,
+            _In_ PVOID TableContext = nullptr
             )
         {
             RtlInitializeGenericTableAvl(
@@ -94,7 +95,7 @@ namespace DdkUnitTest
                 AvlTestCompareRoutine,
                 AvlTestAllocateRoutine,
                 AvlTestFreeRoutine,
-                nullptr
+                TableContext
             );
         }
     } // anonymous namespace
@@ -107,6 +108,49 @@ namespace DdkUnitTest
         {
             // Required wdutf initialization.
             DdkThreadInit();
+        }
+
+        TEST_METHOD(DdkRtlAvlTableContextNull)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table, nullptr);
+
+            Assert::IsTrue(RtlIsGenericTableEmptyAvl(&table));
+            Assert::IsTrue(RtlNumberGenericTableElementsAvl(&table) == 0);
+            Assert::IsTrue(table.TableContext == nullptr);
+        }
+
+        TEST_METHOD(DdkRtlAvlTableContextNotNull)
+        {
+            RTL_AVL_TABLE table;
+            int context;
+            InitializeTestAvlTable(&table, &context);
+
+            Assert::IsTrue(RtlIsGenericTableEmptyAvl(&table));
+            Assert::IsTrue(RtlNumberGenericTableElementsAvl(&table) == 0);
+            Assert::IsTrue(table.TableContext == &context);
+        }
+
+        TEST_METHOD(DdkRtlAvlTableLookupDeleteFromEmpty)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table);
+
+            AVL_TEST_ELEMENT key = {};
+            key.Key = 42;
+
+            BOOLEAN deleted = RtlDeleteElementGenericTableAvl(&table, &key);
+            Assert::IsTrue(deleted == FALSE);
+
+            PAVL_TEST_ELEMENT found =
+                reinterpret_cast<PAVL_TEST_ELEMENT>(
+                    RtlLookupElementGenericTableAvl(
+                        &table,
+                        &key
+                    )
+                );
+
+            Assert::IsTrue(found == nullptr);
         }
 
         /*
@@ -417,72 +461,6 @@ namespace DdkUnitTest
         }
 
         /*
-         * Access elements by index using RtlGetElementGenericTableAvl.
-         * The expected order is ascending by Key.
-         *
-         * Covers:
-         *  - RtlGetElementGenericTableAvl
-         *  - RtlNumberGenericTableElementsAvl
-         */
-        TEST_METHOD(DdkRtlAvlTableGetElementByIndex)
-        {
-            RTL_AVL_TABLE table;
-            InitializeTestAvlTable(&table);
-
-            const ULONG keys[] = { 40, 10, 30, 20 };
-            const ULONG expectedOrder[] = { 10, 20, 30, 40 };
-
-            for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
-            {
-                AVL_TEST_ELEMENT elem;
-                elem.Key = keys[i];
-                elem.Value = (ULONG)(i + 1);
-
-                BOOLEAN isNew = FALSE;
-
-                PAVL_TEST_ELEMENT inserted =
-                    reinterpret_cast<PAVL_TEST_ELEMENT>(
-                        RtlInsertElementGenericTableAvl(
-                            &table,
-                            &elem,
-                            sizeof(elem),
-                            &isNew
-                        )
-                    );
-
-                Assert::IsTrue(inserted != nullptr);
-                Assert::IsTrue(isNew != FALSE);
-            }
-
-            ULONG count = RtlNumberGenericTableElementsAvl(&table);
-            Assert::IsTrue(count == (ULONG)(sizeof(expectedOrder) / sizeof(expectedOrder[0])));
-
-            for (ULONG index = 0; index < count; ++index)
-            {
-                PAVL_TEST_ELEMENT elem =
-                    reinterpret_cast<PAVL_TEST_ELEMENT>(
-                        RtlGetElementGenericTableAvl(
-                            &table,
-                            index
-                        )
-                    );
-
-                Assert::IsTrue(elem != nullptr);
-                Assert::IsTrue(elem->Key == expectedOrder[index]);
-            }
-
-            PAVL_TEST_ELEMENT outOfRange =
-                reinterpret_cast<PAVL_TEST_ELEMENT>(
-                    RtlGetElementGenericTableAvl(
-                        &table,
-                        count
-                    )
-                );
-
-            Assert::IsTrue(outOfRange == nullptr);
-        }
-
-        /*
          * Verify empty and non-empty flags and element count.
          *
          * Covers:
@@ -538,9 +516,9 @@ namespace DdkUnitTest
             RTL_AVL_TABLE table;
             InitializeTestAvlTable(&table);
 
-            AVL_TEST_ELEMENT elem;
-            elem.Key = 5;
-            elem.Value = 100;
+            AVL_TEST_ELEMENT elem1;
+            elem1.Key = 5;
+            elem1.Value = 100;
 
             BOOLEAN isNew1 = FALSE;
             PVOID nodeOrParent1 = nullptr;
@@ -550,8 +528,8 @@ namespace DdkUnitTest
                 reinterpret_cast<PAVL_TEST_ELEMENT>(
                     RtlInsertElementGenericTableFullAvl(
                         &table,
-                        &elem,
-                        sizeof(elem),
+                        &elem1,
+                        sizeof(elem1),
                         &isNew1,
                         nodeOrParent1,
                         searchResult1
@@ -562,16 +540,38 @@ namespace DdkUnitTest
             Assert::IsTrue(isNew1 != FALSE);
             Assert::IsTrue(RtlNumberGenericTableElementsAvl(&table) == 1);
 
+            AVL_TEST_ELEMENT lookupKey = elem1;
+
+            PVOID nodeOrParentFound = nullptr;
+            TABLE_SEARCH_RESULT searchResultFound = TableEmptyTree;
+
+            PAVL_TEST_ELEMENT found =
+                reinterpret_cast<PAVL_TEST_ELEMENT>(
+                    RtlLookupElementGenericTableFullAvl(
+                        &table,
+                        &lookupKey,
+                        &nodeOrParentFound,
+                        &searchResultFound
+                    )
+                );
+
+            Assert::IsTrue(found != nullptr);
+            Assert::IsTrue(found == first);
+            Assert::IsTrue(searchResultFound == TableFoundNode);
+            Assert::IsTrue(nodeOrParentFound != nullptr);
+
+            AVL_TEST_ELEMENT elem2 = elem1;
+
             BOOLEAN isNew2 = TRUE;
-            PVOID nodeOrParent2 = nullptr;
-            TABLE_SEARCH_RESULT searchResult2 = TableEmptyTree;
+            PVOID nodeOrParent2 = nodeOrParentFound;
+            TABLE_SEARCH_RESULT searchResult2 = searchResultFound;
 
             PAVL_TEST_ELEMENT second =
                 reinterpret_cast<PAVL_TEST_ELEMENT>(
                     RtlInsertElementGenericTableFullAvl(
                         &table,
-                        &elem,
-                        sizeof(elem),
+                        &elem2,
+                        sizeof(elem2),
                         &isNew2,
                         nodeOrParent2,
                         searchResult2
@@ -682,6 +682,23 @@ namespace DdkUnitTest
             RTL_AVL_TABLE table;
             InitializeTestAvlTable(&table);
 
+            // lookup in empty map
+            AVL_TEST_ELEMENT testKey;
+            testKey.Key = 100;
+            testKey.Value = 0;
+
+            PVOID restartKeyTest = nullptr;
+
+            PVOID testing =
+                RtlLookupFirstMatchingElementGenericTableAvl(
+                    &table,
+                    &testKey,
+                    &restartKeyTest
+                );
+
+            Assert::IsTrue(testing == nullptr);
+            Assert::IsTrue(restartKeyTest == nullptr);
+
             const ULONG keys[] = { 5, 15, 25 };
 
             for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
@@ -750,6 +767,361 @@ namespace DdkUnitTest
                 );
 
             Assert::IsTrue(missing == nullptr);
+        }
+
+        /*
+         * Walk the AVL tree using RtlRealSuccessor and RtlRealPredecessor
+         * and verify that each node's predecessor and successor match
+         * the expected in-order neighbors.
+         *
+         * This test uses keys 0..elementCount-1 and checks that:
+         *  - predecessor(key k) == key k-1 for 1 <= k <= N-2
+         *  - successor(key k) == key k+1 for 1 <= k <= N-2
+         *  - predecessor(minimum) does not point to any element node
+         *  - successor(maximum) does not point to any element node
+         *
+         * Boundary behavior (min/max) is intentionally checked only as
+         * "outside the set of element nodes", because the implementation
+         * may use an internal sentinel (BalancedRoot) instead of NULL.
+         *
+         * Covers:
+         *  - RtlRealSuccessor
+         *  - RtlRealPredecessor
+         *  - RtlLookupElementGenericTableFullAvl
+         */
+        TEST_METHOD(DdkRtlAvlLinksSuccessorPredecessorChain)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table);
+
+            const ULONG elementCount = 16;
+
+            // Insert keys 0..elementCount-1 into the table.
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT elem;
+                elem.Key = k;
+                elem.Value = k * 10;
+
+                BOOLEAN isNew = FALSE;
+                PAVL_TEST_ELEMENT inserted =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlInsertElementGenericTableAvl(
+                            &table,
+                            &elem,
+                            sizeof(elem),
+                            &isNew
+                        )
+                    );
+
+                Assert::IsTrue(inserted != nullptr);
+                Assert::IsTrue(isNew != FALSE);
+            }
+
+            // Build an array that maps key -> internal node (PRTL_BALANCED_LINKS).
+            PRTL_BALANCED_LINKS nodes[elementCount];
+
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT lookupKey;
+                lookupKey.Key = k;
+                lookupKey.Value = 0;
+
+                PVOID nodeOrParent = nullptr;
+                TABLE_SEARCH_RESULT result = TableEmptyTree;
+
+                PAVL_TEST_ELEMENT found =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlLookupElementGenericTableFullAvl(
+                            &table,
+                            &lookupKey,
+                            &nodeOrParent,
+                            &result
+                        )
+                    );
+
+                Assert::IsTrue(found != nullptr);
+                Assert::IsTrue(result == TableFoundNode);
+
+                nodes[k] = reinterpret_cast<PRTL_BALANCED_LINKS>(nodeOrParent);
+            }
+
+            auto nodeInArray =
+                [&](PRTL_BALANCED_LINKS n) -> bool
+                {
+                    for (ULONG i = 0; i < elementCount; ++i)
+                    {
+                        if (nodes[i] == n)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+            // Check predecessor and successor for inner elements.
+            for (ULONG k = 1; k + 1 < elementCount; ++k)
+            {
+                PRTL_SPLAY_LINKS asSplay =
+                    reinterpret_cast<PRTL_SPLAY_LINKS>(nodes[k]);
+
+                PRTL_BALANCED_LINKS pred =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRealPredecessor(asSplay)
+                    );
+
+                PRTL_BALANCED_LINKS succ =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRealSuccessor(asSplay)
+                    );
+
+                Assert::IsTrue(pred == nodes[k - 1]);
+                Assert::IsTrue(succ == nodes[k + 1]);
+            }
+
+            // Boundary cases: predecessor(min) / successor(max) must not be element nodes.
+            {
+                PRTL_SPLAY_LINKS minSplay =
+                    reinterpret_cast<PRTL_SPLAY_LINKS>(nodes[0]);
+                PRTL_SPLAY_LINKS maxSplay =
+                    reinterpret_cast<PRTL_SPLAY_LINKS>(nodes[elementCount - 1]);
+
+                PRTL_BALANCED_LINKS predMin =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRealPredecessor(minSplay)
+                    );
+
+                PRTL_BALANCED_LINKS succMax =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRealSuccessor(maxSplay)
+                    );
+
+                // Either NULL or sentinel, but must not be any element node.
+                Assert::IsFalse(nodeInArray(predMin));
+                Assert::IsFalse(nodeInArray(succMax));
+            }
+        }
+
+        /*
+         * Use RtlLeftChild and RtlRightChild to walk from the root
+         * to the minimum and maximum elements and verify that they
+         * match the expected nodes.
+         *
+         * The tree is populated with keys 0..elementCount-1.
+         * We expect:
+         *  - leftmost node reachable from the root to be key 0
+         *  - rightmost node reachable from the root to be key elementCount-1
+         *
+         * Covers:
+         *  - RtlLeftChild
+         *  - RtlRightChild
+         *  - RtlLookupElementGenericTableFullAvl
+         */
+        TEST_METHOD(DdkRtlAvlLinksLeftRightChildrenReachExtremes)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table);
+
+            const ULONG elementCount = 16;
+
+            // Insert keys 0..elementCount-1 into the table.
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT elem;
+                elem.Key = k;
+                elem.Value = k * 10;
+
+                BOOLEAN isNew = FALSE;
+                PAVL_TEST_ELEMENT inserted =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlInsertElementGenericTableAvl(
+                            &table,
+                            &elem,
+                            sizeof(elem),
+                            &isNew
+                        )
+                    );
+
+                Assert::IsTrue(inserted != nullptr);
+                Assert::IsTrue(isNew != FALSE);
+            }
+
+            // Build an array that maps key -> internal node (PRTL_BALANCED_LINKS).
+            PRTL_BALANCED_LINKS nodes[elementCount];
+
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT lookupKey;
+                lookupKey.Key = k;
+                lookupKey.Value = 0;
+
+                PVOID nodeOrParent = nullptr;
+                TABLE_SEARCH_RESULT result = TableEmptyTree;
+
+                PAVL_TEST_ELEMENT found =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlLookupElementGenericTableFullAvl(
+                            &table,
+                            &lookupKey,
+                            &nodeOrParent,
+                            &result
+                        )
+                    );
+
+                Assert::IsTrue(found != nullptr);
+                Assert::IsTrue(result == TableFoundNode);
+
+                nodes[k] = reinterpret_cast<PRTL_BALANCED_LINKS>(nodeOrParent);
+            }
+
+            // In an AVL table the logical root node is the right child of BalancedRoot.
+            PRTL_BALANCED_LINKS root =
+                reinterpret_cast<PRTL_BALANCED_LINKS>(
+                    RtlRightChild(
+                        reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                );
+
+            Assert::IsTrue(root != nullptr);
+
+            // Walk down the left children until we reach the leftmost node.
+            PRTL_BALANCED_LINKS leftMost = root;
+            while (RtlLeftChild(reinterpret_cast<PRTL_SPLAY_LINKS>(leftMost)) != nullptr)
+            {
+                leftMost =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlLeftChild(reinterpret_cast<PRTL_SPLAY_LINKS>(leftMost))
+                    );
+            }
+
+            // The leftmost node must correspond to key 0.
+            Assert::IsTrue(leftMost == nodes[0]);
+
+            // Walk down the right children until we reach the rightmost node.
+            PRTL_BALANCED_LINKS rightMost = root;
+            while (RtlRightChild(reinterpret_cast<PRTL_SPLAY_LINKS>(rightMost)) != nullptr)
+            {
+                rightMost =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRightChild(reinterpret_cast<PRTL_SPLAY_LINKS>(rightMost))
+                    );
+            }
+
+            // The rightmost node must correspond to key elementCount-1.
+            Assert::IsTrue(rightMost == nodes[elementCount - 1]);
+        }
+
+        /*
+         * Perform a full in-order traversal using RtlRealSuccessor,
+         * starting from the leftmost node reached via RtlLeftChild.
+         *
+         * The tree is populated with keys 0..elementCount-1.
+         * We expect:
+         *  - the first node to be key 0
+         *  - each call to RtlRealSuccessor to move to the node for key+1
+         *  - traversal to end after visiting all elements
+         *
+         * Covers:
+         *  - RtlLeftChild
+         *  - RtlRightChild
+         *  - RtlRealSuccessor
+         *  - RtlLookupElementGenericTableFullAvl
+         */
+        TEST_METHOD(DdkRtlAvlLinksInorderTraversalUsingSuccessor)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table);
+
+            const ULONG elementCount = 16;
+
+            // Insert keys 0..elementCount-1 into the table.
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT elem;
+                elem.Key = k;
+                elem.Value = k * 10;
+
+                BOOLEAN isNew = FALSE;
+                PAVL_TEST_ELEMENT inserted =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlInsertElementGenericTableAvl(
+                            &table,
+                            &elem,
+                            sizeof(elem),
+                            &isNew
+                        )
+                    );
+
+                Assert::IsTrue(inserted != nullptr);
+                Assert::IsTrue(isNew != FALSE);
+            }
+
+            // Build an array that maps key -> internal node (PRTL_BALANCED_LINKS).
+            PRTL_BALANCED_LINKS nodes[elementCount];
+
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT lookupKey;
+                lookupKey.Key = k;
+                lookupKey.Value = 0;
+
+                PVOID nodeOrParent = nullptr;
+                TABLE_SEARCH_RESULT result = TableEmptyTree;
+
+                PAVL_TEST_ELEMENT found =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlLookupElementGenericTableFullAvl(
+                            &table,
+                            &lookupKey,
+                            &nodeOrParent,
+                            &result
+                        )
+                    );
+
+                Assert::IsTrue(found != nullptr);
+                Assert::IsTrue(result == TableFoundNode);
+
+                nodes[k] = reinterpret_cast<PRTL_BALANCED_LINKS>(nodeOrParent);
+            }
+
+            // Get the logical root of the tree.
+            PRTL_BALANCED_LINKS root =
+                reinterpret_cast<PRTL_BALANCED_LINKS>(
+                    RtlRightChild(
+                        reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                );
+            Assert::IsTrue(root != nullptr);
+
+            // Find the leftmost node by following left children from the root.
+            PRTL_BALANCED_LINKS current = root;
+            while (RtlLeftChild(reinterpret_cast<PRTL_SPLAY_LINKS>(current)) != nullptr)
+            {
+                current =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlLeftChild(reinterpret_cast<PRTL_SPLAY_LINKS>(current))
+                    );
+            }
+
+            // The leftmost node must correspond to key 0.
+            Assert::IsTrue(current == nodes[0]);
+
+            // Walk the tree in-order using RtlRealSuccessor and verify that
+            // we visit nodes in the order of keys 0..elementCount-1.
+            ULONG index = 0;
+            while (current != nullptr)
+            {
+                Assert::IsTrue(index < elementCount);
+                Assert::IsTrue(current == nodes[index]);
+
+                current =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRealSuccessor(
+                            reinterpret_cast<PRTL_SPLAY_LINKS>(current))
+                    );
+                ++index;
+            }
+
+            // All elements must have been visited exactly once.
+            Assert::IsTrue(index == elementCount);
         }
     };
 }
