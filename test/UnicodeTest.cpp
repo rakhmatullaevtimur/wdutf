@@ -1585,6 +1585,117 @@ namespace DdkUnitTest
 
 			RtlFreeAnsiString(&ansiStr);
 		}
-		
+
+		/*
+         * Check prefix on identical strings (both case-sensitive and insensitive)
+         */
+        TEST_METHOD(DdkUnicodePrefixStringsIdentical)
+        {
+            UNICODE_STRING str1 = RTL_CONSTANT_STRING(L"abcde");
+            UNICODE_STRING str2 = RTL_CONSTANT_STRING(L"abcde");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&str1, &str2, FALSE);
+            Assert::IsTrue(res == TRUE);
+
+            res = RtlPrefixUnicodeString(&str1, &str2, TRUE);
+            Assert::IsTrue(res == TRUE);
+        }
+
+        /*
+         * Check that a proper prefix is detected
+         */
+        TEST_METHOD(DdkUnicodePrefixStringsBasicPrefix)
+        {
+            UNICODE_STRING prefix = RTL_CONSTANT_STRING(L"abc");
+            UNICODE_STRING text   = RTL_CONSTANT_STRING(L"abcde");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&prefix, &text, FALSE);
+            Assert::IsTrue(res == TRUE);
+
+            res = RtlPrefixUnicodeString(&prefix, &text, TRUE);
+            Assert::IsTrue(res == TRUE);
+        }
+
+        /*
+         * Check that a non-prefix is rejected (first difference in the middle)
+         */
+        TEST_METHOD(DdkUnicodePrefixStringsNotPrefix)
+        {
+            UNICODE_STRING prefix = RTL_CONSTANT_STRING(L"abX");
+            UNICODE_STRING text   = RTL_CONSTANT_STRING(L"abcde");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&prefix, &text, FALSE);
+            Assert::IsTrue(res == FALSE);
+
+            res = RtlPrefixUnicodeString(&prefix, &text, TRUE);
+            Assert::IsTrue(res == FALSE);
+        }
+
+        /*
+         * Check that String1 longer than String2 is never a prefix
+         */
+        TEST_METHOD(DdkUnicodePrefixString1LongerThanString2)
+        {
+            UNICODE_STRING prefix = RTL_CONSTANT_STRING(L"abcdef");
+            UNICODE_STRING text   = RTL_CONSTANT_STRING(L"abc");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&prefix, &text, FALSE);
+            Assert::IsTrue(res == FALSE);
+
+            res = RtlPrefixUnicodeString(&prefix, &text, TRUE);
+            Assert::IsTrue(res == FALSE);
+        }
+
+        /*
+         * Check case-insensitive behavior when strings differ only by case
+         */
+        TEST_METHOD(DdkUnicodePrefixStringsDiffCase)
+        {
+            UNICODE_STRING prefix = RTL_CONSTANT_STRING(L"AbC");
+            UNICODE_STRING text   = RTL_CONSTANT_STRING(L"aBcDe");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&prefix, &text, TRUE);
+            Assert::IsTrue(res == TRUE);   // case-insensitive: should match
+
+            res = RtlPrefixUnicodeString(&prefix, &text, FALSE);
+            Assert::IsTrue(res == FALSE);  // case-sensitive: should not match
+        }
+
+        /*
+         * Check that an empty prefix is a prefix of any string (including empty)
+         */
+        TEST_METHOD(DdkUnicodePrefixEmptyPrefix)
+        {
+            UNICODE_STRING emptyPrefix = RTL_CONSTANT_STRING(L"");
+            UNICODE_STRING nonEmpty    = RTL_CONSTANT_STRING(L"abcde");
+            UNICODE_STRING emptyText   = RTL_CONSTANT_STRING(L"");
+
+            // Empty prefix -> TRUE for non-empty text
+            BOOLEAN res = RtlPrefixUnicodeString(&emptyPrefix, &nonEmpty, FALSE);
+            Assert::IsTrue(res == TRUE);
+            res = RtlPrefixUnicodeString(&emptyPrefix, &nonEmpty, TRUE);
+            Assert::IsTrue(res == TRUE);
+
+            // Empty prefix -> TRUE for empty text
+            res = RtlPrefixUnicodeString(&emptyPrefix, &emptyText, FALSE);
+            Assert::IsTrue(res == TRUE);
+            res = RtlPrefixUnicodeString(&emptyPrefix, &emptyText, TRUE);
+            Assert::IsTrue(res == TRUE);
+        }
+
+        /*
+         * Check that a non-empty prefix is not a prefix of an empty string
+         */
+        TEST_METHOD(DdkUnicodePrefixNonEmptyPrefixEmptyString2)
+        {
+            UNICODE_STRING prefix = RTL_CONSTANT_STRING(L"abc");
+            UNICODE_STRING emptyText = RTL_CONSTANT_STRING(L"");
+
+            BOOLEAN res = RtlPrefixUnicodeString(&prefix, &emptyText, FALSE);
+            Assert::IsTrue(res == FALSE);
+
+            res = RtlPrefixUnicodeString(&prefix, &emptyText, TRUE);
+            Assert::IsTrue(res == FALSE);
+        }		
 	};
 }

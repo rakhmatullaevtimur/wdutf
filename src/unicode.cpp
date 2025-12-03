@@ -508,6 +508,39 @@ NTSTATUS RtlUTF8ToUnicodeN(PWSTR UnicodeStringDestination, ULONG UnicodeStringMa
 }
 
 
+DDKAPI
+BOOLEAN RtlPrefixUnicodeString(PCUNICODE_STRING String1, PCUNICODE_STRING String2, BOOLEAN CaseInsensitive)
+{
+    if (String2->Length < String1->Length)
+        return FALSE;
+
+    ULONG NumChars = String1->Length / sizeof(WCHAR);
+    PWCHAR pc1 = String1->Buffer;
+    PWCHAR pc2 = String2->Buffer;
+
+    if (pc1 && pc2){
+        
+		if (CaseInsensitive){
+
+            while (NumChars--){
+
+                if (towupper(*pc1++) != towupper(*pc2++))
+                    return FALSE;
+            }
+
+        }else{ 
+
+            while (NumChars--){
+                if (*pc1++ != *pc2++)
+                    return FALSE;
+            }
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
 WCHAR *DdkUnicodeToString(UNICODE_STRING *u, WCHAR remove)
 {
 	if (!u) return NULL;
