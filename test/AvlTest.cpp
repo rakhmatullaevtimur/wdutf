@@ -794,6 +794,14 @@ namespace DdkUnitTest
             RTL_AVL_TABLE table;
             InitializeTestAvlTable(&table);
 
+            PRTL_BALANCED_LINKS empty_root =
+                reinterpret_cast<PRTL_BALANCED_LINKS>(
+                    RtlRightChild(
+                        reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                );
+
+            Assert::IsTrue(empty_root == nullptr);
+
             const ULONG elementCount = 16;
 
             // Insert keys 0..elementCount-1 into the table.
@@ -1131,6 +1139,64 @@ namespace DdkUnitTest
 
             // All elements must have been visited exactly once.
             Assert::IsTrue(index == elementCount);
+        }
+
+        TEST_METHOD(DdkRtlAvlLinksClearThroughRoot)
+        {
+            RTL_AVL_TABLE table;
+            InitializeTestAvlTable(&table);
+
+            const ULONG elementCount = 16;
+
+            // Insert keys 0..elementCount-1 into the table.
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                AVL_TEST_ELEMENT elem;
+                elem.Key = k;
+                elem.Value = k * 10;
+
+                BOOLEAN isNew = FALSE;
+                PAVL_TEST_ELEMENT inserted =
+                    reinterpret_cast<PAVL_TEST_ELEMENT>(
+                        RtlInsertElementGenericTableAvl(
+                            &table,
+                            &elem,
+                            sizeof(elem),
+                            &isNew
+                        )
+                    );
+
+                Assert::IsTrue(inserted != nullptr);
+                Assert::IsTrue(isNew != FALSE);
+            }
+
+            ULONG sz = RtlNumberGenericTableElementsAvl(&table);
+            Assert::IsTrue(sz == elementCount);
+
+            for (ULONG k = 0; k < elementCount; ++k)
+            {
+                // Get the logical root of the tree.
+                PRTL_BALANCED_LINKS root =
+                    reinterpret_cast<PRTL_BALANCED_LINKS>(
+                        RtlRightChild(
+                            reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                    );
+                Assert::IsTrue(root != nullptr);
+
+                BOOLEAN res = RtlDeleteElementGenericTableAvl(&table, (root+1));
+                Assert::IsTrue(res);
+            }
+            
+            sz = RtlNumberGenericTableElementsAvl(&table);
+            Assert::IsTrue(sz == 0);
+
+            // Get the logical root of the tree.
+            PRTL_BALANCED_LINKS empty_root =
+                reinterpret_cast<PRTL_BALANCED_LINKS>(
+                    RtlRightChild(
+                        reinterpret_cast<PRTL_SPLAY_LINKS>(&table.BalancedRoot))
+                );
+            Assert::IsTrue(empty_root == nullptr);
         }
     };
 }
